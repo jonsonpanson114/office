@@ -1,20 +1,49 @@
 
 # Python
 __pycache__/
-# data/chroma_db_v2/ - included for cold-start performance
-data/chroma_db_v2_backup/
 *.py[cod]
 *$py.class
+*.so
+.Python
 
 # Environment variables
 .env
+.env.local
 
-# Temp
+# Virtual Environment
+.venv/
+venv/
+
+# ChromaDB databases (rebuildable from export)
+data/chroma_db_v*/
+data/chroma_db*_backup/
+
+# Data files (large/generated)
+data/enriched_data_corrupted.json
+data/enriched_data_v2_fossil.json
+data/chroma_export.json
+
+# Temp files
 *.log
+*_progress.log
 verification_log.txt
 verification_result.txt
 verify_output.txt
+rebuild_progress.log
+debug_*.py
+test_*.py
+verify_*.py
 
 # OS
 .DS_Store
 Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Images cache
+.pytest_cache/
