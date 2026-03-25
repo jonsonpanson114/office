@@ -327,86 +327,82 @@ div[data-testid="stButton"] > button:active {
 }
 
 /* ════════════════════════════════════════════════════════
-   GALLERY CARDS — Glassmorphism
+   IMMERSIVE GALLERY — Wall of Inspiration
    ════════════════════════════════════════════════════════ */
 .card {
     background: var(--linen);
-    border: 1px solid var(--mist); /* Thin technical border */
-    border-radius: 0; /* Sharp corners */
+    border: none !important; /* Borderless for immersive feel */
+    border-radius: 0; 
     overflow: hidden;
-    margin-bottom: 48px;
-    transition: all 0.3s ease;
-    animation: fadeIn 0.8s ease both;
+    margin-bottom: 0px !important; /* No gaps */
+    position: relative;
+    transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+    animation: fadeIn 1s ease both;
 }
 .card:hover {
-    border-color: var(--charcoal);
-    box-shadow: 10px 10px 0px rgba(15, 23, 42, 0.03); /* Offset shadow like drafting */
+    z-index: 10;
+    transform: scale(1.02);
+    box-shadow: 0 30px 60px rgba(15, 23, 42, 0.15);
 }
 
-.card .thumb-wrap {
-    position: relative;
-    overflow: hidden;
-    margin: 0;
-    border-bottom: var(--line);
-}
 .card .thumb {
     width: 100%;
-    height: 240px;
+    height: 320px; /* Slightly taller */
     object-fit: cover;
     display: block;
-    transition: transform 0.6s ease;
+    filter: grayscale(20%) contrast(105%); /* Technical photography feel */
+    transition: all 0.8s cubic-bezier(0.4, 0, 0.2, 1);
 }
 .card:hover .thumb {
-    transform: scale(1.04);
-}
-.card .thumb-empty {
-    width: 100%;
-    height: 240px;
-    background: linear-gradient(135deg, #f1f5f9, #e2e8f0);
+    filter: grayscale(0%) contrast(100%);
+    transform: scale(1.08);
 }
 
-/* Score bar */
+/* Hover Overlay */
+.card .overlay {
+    position: absolute;
+    top: 0; left: 0; width: 100%; height: 100%;
+    background: linear-gradient(to top, rgba(15, 23, 42, 0.8) 0%, transparent 60%);
+    opacity: 0;
+    transition: opacity 0.4s ease;
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-end;
+    padding: 24px;
+    z-index: 3;
+}
+.card:hover .overlay {
+    opacity: 1;
+}
+
+/* Score bar — Now a thin technical line at top */
 .card .score-line {
     position: absolute;
-    bottom: 0;
+    top: 0;
     left: 0;
-    height: 2px;
-    z-index: 2;
+    height: 3px;
+    z-index: 4;
     background: var(--brass);
 }
 
-/* Metadata */
+/* Metadata — Hidden by default, shown on hover overlay */
 .card .meta {
-    padding: 20px 24px 24px;
+    display: none; /* Move content to overlay for immersive look */
 }
-.card .meta .name {
-    font-family: var(--display);
-    font-size: 18px;
-    font-weight: 500;
-    color: var(--charcoal);
-    margin: 0 0 6px;
-    line-height: 1.3;
+
+.card .overlay .name {
+    font-family: var(--serif);
+    font-size: 20px;
+    font-style: italic;
+    color: var(--white);
+    margin: 0 0 4px;
 }
-.card .meta .match-tag {
-    display: inline-block;
-    font-family: var(--body);
+.card .overlay .products {
+    font-family: var(--mono);
     font-size: 10px;
-    font-weight: 500;
-    letter-spacing: 0.05em;
-    color: var(--accent-light);
-    background: rgba(139, 92, 246, 0.15);
-    padding: 3px 8px;
-    border-radius: 12px;
-    margin-left: 8px;
-    vertical-align: middle;
-}
-.card .meta .products {
-    font-family: var(--body);
-    font-size: 11px;
-    font-weight: 500;
-    color: var(--stone);
-    margin: 0 0 12px;
-    letter-spacing: 0.02em;
+    color: var(--ash);
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
 }
 .card .meta .desc {
     font-family: var(--body);
@@ -611,19 +607,20 @@ div[data-testid="stSpinner"] {
 .insight-header {
     display: flex;
     align-items: center;
-    gap: 10px;
-    margin-bottom: 20px;
-    font-family: var(--display);
-    font-size: 18px;
-    color: var(--ink);
-    letter-spacing: 0.1em;
+    gap: 12px;
+    margin-bottom: 32px;
+    font-family: var(--mono);
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--brass);
+    letter-spacing: 0.2em;
     text-transform: uppercase;
 }
 
 .insight-grid {
     display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 24px;
+    grid-template-columns: 240px 1fr;
+    gap: 60px;
 }
 
 .style-tag {
@@ -825,15 +822,12 @@ def render_card(r: dict, card_index: int = 0, show_score: bool = True):
 
     st.markdown(f"""
 <div class="card" style="--i:{card_index}">
-<div class="thumb-wrap">
-{thumb}
-{score_line}
-</div>
-<div class="meta">
-<p class="name">{name}{match_badge}</p>
-<p class="products">{products}</p>
-<p class="desc">{desc}</p>
-</div>
+    {thumb}
+    {score_line}
+    <div class="overlay">
+        <div class="name">{name}{match_badge}</div>
+        <div class="products">{products}</div>
+    </div>
 </div>
 """,
         unsafe_allow_html=True,
@@ -1270,21 +1264,21 @@ def render_detail_view(case_id: str):
             st.markdown(f"""
 <div class="insight-section">
     <div class="insight-header">
-        ✨ Gemini's Design Insight
+        ● SPECIFICATION &amp; DESIGN INSIGHT / Powered by Gemini 3.1
     </div>
     <div class="insight-grid">
         <div class="insight-col">
-            <p style="font-size:12px;color:var(--ash);margin-bottom:4px;text-transform:uppercase;letter-spacing:0.1em;">空間スタイル</p>
-            <span class="style-tag">{style if style else "スタンダード"}</span>
-            <p style="font-size:12px;color:var(--ash);margin-bottom:8px;text-transform:uppercase;letter-spacing:0.1em;">カラーパレット</p>
+            <p style="font-family:var(--mono);font-size:10px;color:var(--stone);margin-bottom:8px;text-transform:uppercase;letter-spacing:0.1em;">[ Space Style ]</p>
+            <span class="style-tag">{style if style else "ARCHITECTURAL"}</span>
+            <p style="font-family:var(--mono);font-size:10px;color:var(--stone);margin:24px 0 8px;text-transform:uppercase;letter-spacing:0.1em;">[ Color Palette ]</p>
             <div class="color-palette">
                 {color_chips}
             </div>
         </div>
         <div class="insight-col">
-            <p style="font-size:12px;color:var(--ash);margin-bottom:8px;text-transform:uppercase;letter-spacing:0.1em;">プロのアドバイス</p>
-            <div class="advice-text">
-                {advice if advice else "シンプルで機能的なデザインが、空間の広がりを演出しています。"}
+            <p style="font-family:var(--mono);font-size:10px;color:var(--stone);margin-bottom:12px;text-transform:uppercase;letter-spacing:0.1em;">[ Technical Notes ]</p>
+            <div class="advice-text" style="font-family:var(--body); font-size:15px; line-height:1.8; color:var(--charcoal); border-left: 2px solid var(--brass); padding-left:24px;">
+                {advice if advice else "NO DATA PROVIDED."}
             </div>
         </div>
     </div>
@@ -1362,6 +1356,23 @@ def main():
             st.success("キャッシュをクリアしました")
             st.rerun()
             
+        st.markdown("---")
+        st.markdown("### 🕊 感性で探す (Sensory)")
+        MOODS = [
+            ("光と影", "Contrast of light and shadow, dramatic lighting"),
+            ("木の温もり", "Warm natural wood texture, organic"),
+            ("無機質な静寂", "Minimalist, clean, concrete, silent office"),
+            ("開放的な透明感", "Glass, transparency, bright open space"),
+            ("重厚な格式", "Heavy, formal, classic executive room")
+        ]
+        for label, mood_query in MOODS:
+            is_active = st.session_state.get("search_query") == mood_query
+            l = f"✧ {label}" if is_active else label
+            if st.button(l, use_container_width=True, key=f"mood_{label}"):
+                st.session_state["search_query"] = mood_query
+                st.session_state["page"] = 0
+                st.rerun()
+
         st.markdown("---")
         st.markdown("### 🖌 製品で絞り込む")
         if st.button("(すべて)", use_container_width=True, key="prod_all"):
