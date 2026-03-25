@@ -73,7 +73,7 @@ st.markdown(
     --silk: #f8fafc;      /* Background */
     --linen: #fdfcfb;     /* Paper White */
     --cream: #ffffff;     /* Highlight */
-    --brass: #b8860b;     /* Accents */
+    --white: #ffffff;     /* White for text */
     
     /* Technical Graphics */
     --line: 1px solid rgba(15, 23, 42, 0.08);

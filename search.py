@@ -10,16 +10,17 @@ from dotenv import load_dotenv
 import chromadb
 from google import genai
 from google.genai.types import EmbedContentConfig
+from PIL import Image
 
 load_dotenv()
 
 DATA_DIR = Path(__file__).parent / "data"
 ENRICHED_DATA_PATH = DATA_DIR / "enriched_data.json"
-CHROMA_DIR = DATA_DIR / "chroma_db_v2"
+CHROMA_DIR = DATA_DIR / "chroma_db_v3_latest" # v3 にアップデート
 
-COLLECTION_NAME = "komatsu_cases"
-EMBEDDING_MODEL = "gemini-embedding-001"
-EMBEDDING_DIMENSION = 3072
+COLLECTION_NAME = "komatsu_cases_v3"
+EMBEDDING_MODEL = "gemini-embedding-2-preview"
+EMBEDDING_DIMENSION = 768
 
 
 import logging
@@ -33,15 +34,39 @@ def _rebuild_from_export(client) -> None:
     try:
         with open(EXPORT_PATH, "r", encoding="utf-8") as f:
             records = json.load(f)
-        col = client.get_or_create_collection(
-            name=COLLECTION_NAME,
-            metadata={"hnsw:space": "cosine"},
-        )
+
+        # 既存のコレクションを削除
+        existing_names = [c.name for c in client.list_collections()]
+        if COLLECTION_NAME in existing_names:
+            try:
+                client.delete_collection(COLLECTION_NAME)
+            except Exception:
+                pass
+
+        # Check embedding dimension and pad if needed
         ids = [str(r["id"]) for r in records]
         documents = [r["document"] for r in records]
         metadatas = [r["metadata"] for r in records]
-        embeddings = [r["embedding"] for r in records]
+        embeddings = []
+
+        for r in records:
+            emb = r["embedding"]
+            # If embedding is 768, pad to 3072 for ChromaDB 1.5.5
+            if len(emb) == 768:
+                emb_3072 = emb + [0.0] * (3072 - 768)
+                embeddings.append(emb_3072)
+            else:
+                # Already padded, use as-is
+                embeddings.append(emb)
+
         batch_size = 200
+
+        # Create collection and add data
+        col = client.create_collection(
+            name=COLLECTION_NAME,
+            metadata={"hnsw:space": "cosine"},
+        )
+
         for i in range(0, len(ids), batch_size):
             col.add(
                 ids=ids[i:i+batch_size],
@@ -49,6 +74,7 @@ def _rebuild_from_export(client) -> None:
                 metadatas=metadatas[i:i+batch_size],
                 embeddings=embeddings[i:i+batch_size],
             )
+
         logging.info(f"[Search] {len(records)}件のデータを正常に復元しました。")
     except Exception as rebuild_e:
         logging.error(f"[Search] Restore failed: {rebuild_e}")
@@ -119,7 +145,10 @@ def get_embedding(text: str) -> list[float]:
                 output_dimensionality=EMBEDDING_DIMENSION,
             ),
         )
-        return response.embeddings[0].values
+        # Pad 768 to 3072 for ChromaDB 1.5.5 compatibility
+        embedding_768 = response.embeddings[0].values
+        embedding_3072 = embedding_768 + [0.0] * (3072 - 768)
+        return embedding_3072
     except Exception as e:
         logging.error(f"[Search] Embedding failed: {e}")
         raise
@@ -128,7 +157,7 @@ def get_query_embedding(text: str) -> list[float]:
     client = configure_api()
     try:
         if not text or not text.strip():
-            return [0.0] * EMBEDDING_DIMENSION
+            return [0.0] * 3072  # ChromaDB 1.5.5 default dimension
 
         response = client.models.embed_content(
             model=EMBEDDING_MODEL,
@@ -137,10 +166,32 @@ def get_query_embedding(text: str) -> list[float]:
                 output_dimensionality=EMBEDDING_DIMENSION,
             ),
         )
-        return response.embeddings[0].values
+        # Pad 768 to 3072 for ChromaDB 1.5.5 compatibility
+        embedding_768 = response.embeddings[0].values
+        embedding_3072 = embedding_768 + [0.0] * (3072 - 768)
+        return embedding_3072
     except Exception as e:
         logging.error(f"[Search] Query embedding failed: {e}")
         raise RuntimeError(f"Gemini Embedding Error: {str(e)}")
+
+
+def get_image_embedding(img: Image.Image) -> list[float]:
+    client = configure_api()
+    try:
+        response = client.models.embed_content(
+            model=EMBEDDING_MODEL,
+            contents=[img],
+            config=EmbedContentConfig(
+                output_dimensionality=EMBEDDING_DIMENSION,
+            ),
+        )
+        # Pad 768 to 3072 for ChromaDB 1.5.5 compatibility
+        embedding_768 = response.embeddings[0].values
+        embedding_3072 = embedding_768 + [0.0] * (3072 - 768)
+        return embedding_3072
+    except Exception as e:
+        logging.error(f"[Search] Image embedding failed: {e}")
+        raise RuntimeError(f"Gemini Image Embedding Error: {str(e)}")
 
 
 def build_index() -> chromadb.Collection:
@@ -162,7 +213,7 @@ def build_index() -> chromadb.Collection:
 
     collection = client.create_collection(
         name=COLLECTION_NAME,
-        metadata={"hnsw:space": "cosine"},
+        metadata={"hnsw:space": "cosine", "dimension": EMBEDDING_DIMENSION},
     )
 
     doc_id = 0
